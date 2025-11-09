@@ -21,7 +21,7 @@ Built with **Laravel 12**, this project demonstrates clean architecture, SOLID p
   * User preferences for personalized article filtering
 * 🕒 **Automated updates** via Laravel Commands with scheduling attributes
 * 🧱 **SOLID design** with service and repository layers
-* ⚡ **Queue-ready** architecture for background fetching
+* 🧪 **Comprehensive unit tests** with Mockery
 * ✅ Built with Laravel 12 structure and best practices
 
 ---
@@ -100,25 +100,28 @@ app/
  │    └── NewsProviderInterface.php      # Abstraction for all news services
  │
  ├── Http/
- │    └── Controllers/
- │         └── Api/
- │              └── ArticleController.php   # API endpoints for articles
- │
- ├── Jobs/
- │    └── (Optional) background jobs
+ │    ├── Controllers/
+ │    │    └── Api/
+ │    │         ├── ArticleController.php        # API endpoints for articles
+ │    │         └── UserPreferenceController.php  # API endpoints for user preferences
+ │    └── Resources/
+ │         └── ArticleResource.php      # API resource for article transformation
  │
  ├── Models/
  │    ├── Article.php
  │    ├── Category.php
- │    └── Source.php
+ │    ├── Source.php
+ │    ├── User.php
+ │    └── UserPreferredAuthor.php
  │
  ├── Providers/
  │    └── NewsServiceProvider.php       # Registers all source services
  │
  ├── Repositories/
- │    └── ArticleRepository.php         # Handles DB persistence
+ │    └── ArticleRepository.php         # Handles DB persistence and queries
  │
  └── Services/
+      ├── ArticleService.php            # Business logic for filtering, sorting, preferences
       └── News/
            ├── NewsApiService.php
            ├── GuardianService.php
@@ -154,6 +157,8 @@ Storage is delegated to `App\Repositories\ArticleRepository`, which handles:
 * Source creation (if new)
 * Category creation and assignment (if provided)
 * Article upsert (updateOrCreate on URL)
+* Query initialization with relationships
+* Pagination
 
 **Category Assignment:**
 Articles are automatically assigned categories when fetched:
@@ -161,9 +166,21 @@ Articles are automatically assigned categories when fetched:
 - The Guardian: Uses `sectionName` or `sectionId`
 - New York Times: Uses `section` field
 
+### 🔍 3. API Request Flow
+
+When a request comes to `/api/articles`:
+
+1. **ArticleController** receives the request
+2. **ArticleRepository::initArticle()** initializes query with relationships
+3. **ArticleService::applyUserPreferences()** applies user preferences if requested
+4. **ArticleService::applyFilters()** applies search and filter criteria
+5. **ArticleService::applySorting()** applies sorting
+6. **ArticleRepository::paginate()** paginates results
+7. **ArticleResource** transforms data for API response
+
 ---
 
-### 🕒 3. Scheduling & Cron Command
+### 🕒 4. Scheduling & Cron Command
 
 The project uses a **custom Laravel Command** with the `#[Schedule]` attribute:
 
@@ -225,7 +242,7 @@ Laravel automatically detects the `#[Schedule('hourly')]` attribute and executes
 - `date`: Filter by publication date (format: YYYY-MM-DD)
 - `use_preferences`: Boolean flag to apply user preferences (requires `user_id` parameter)
 - `user_id`: User ID for preference-based filtering (works without authentication)
-- `limit`: Number of results per page (default: 20)
+- `limit`: Number of results per page (default: 10)
 
 **Examples:**
 ```bash
@@ -298,18 +315,44 @@ GET /api/articles?use_preferences=true&user_id=1
 
 ## 🧪 Testing
 
-Run feature and unit tests:
+Run all tests:
 
 ```bash
 php artisan test
 ```
 
-You can mock providers to isolate integration logic:
+### Test Structure
+
+The project includes comprehensive unit tests:
+
+**Services Tests:**
+- `NewsApiServiceTest` - Tests NewsAPI service
+- `GuardianServiceTest` - Tests Guardian API service
+- `NyTimesServiceTest` - Tests NY Times API service
+- `NewsFetcherTest` - Tests article fetcher orchestrator
+
+**Repository Tests:**
+- `ArticleRepositoryTest` - Tests article repository with mocks
+
+**Controller Tests:**
+- `ArticleControllerTest` - Tests article API controller with mocks
+
+**Testing Approach:**
+- Uses Mockery for mocking dependencies
+- Tests use mocks instead of factories
+- Isolated unit tests for each component
+- Tests cover success and error scenarios
+
+**Example Mock Usage:**
 
 ```php
-$this->mock(NewsProviderInterface::class, fn ($mock) =>
-    $mock->shouldReceive('fetchArticles')->andReturn([...])
-);
+// Mock a service
+$mockService = Mockery::mock(ArticleService::class);
+$mockService->shouldReceive('applyFilters')
+    ->once()
+    ->andReturnUsing(function ($query) {
+        return $query;
+    });
 ```
 
 ---
@@ -320,7 +363,8 @@ $this->mock(NewsProviderInterface::class, fn ($mock) =>
 * Add authentication middleware (Laravel Sanctum) for production
 * Swagger or Postman documentation for API
 * Dockerize project for easier deployment
-* Add unit and feature tests
+* Add feature tests for API endpoints
+* Add article content caching
 
 ---
 
