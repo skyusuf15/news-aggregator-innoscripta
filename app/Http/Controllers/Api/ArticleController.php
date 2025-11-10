@@ -17,8 +17,6 @@ class ArticleController extends Controller
 
     public function index(Request $request): AnonymousResourceCollection
     {
-        // can add validation here
-
         $query = $this->articleRepository->initArticle();
 
         $query = $this->articleService->applyUserPreferences(query: $query, request: $request);
