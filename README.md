@@ -9,7 +9,7 @@ Built with **Laravel 12**, this project demonstrates clean architecture, SOLID p
 
 * 🔄 **Automatic article aggregation** from multiple sources:
 
-  * [NewsAPI](https://newsapi.org/)
+  * [NewsAPI.org](https://newsapi.org/)
   * [The Guardian API](https://open-platform.theguardian.com/)
   * [New York Times API](https://developer.nytimes.com/)
 * 💾 **Persistent storage** using Eloquent ORM
